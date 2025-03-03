@@ -21,6 +21,7 @@
 #include <map>
 #include <memory>
 #include <stdexcept>
+#include <chrono>
 #if (!defined(_MSC_VER) || (_MSC_VER > 1600))
 #include <mutex>
 #else
@@ -84,7 +85,8 @@ public:
       do {
         using namespace std::chrono;
         param = static_cast<navlib::param_t>(
-            duration_cast<microseconds>(high_resolution_clock::now().time_since_epoch()).count());
+           std::chrono::duration_cast<std::chrono::microseconds>(
+           std::chrono::high_resolution_clock::now().time_since_epoch()).count());
       } while (map_t::find(param) != map_t::end());
       (*this)[param] = std::move(sp);
     }
