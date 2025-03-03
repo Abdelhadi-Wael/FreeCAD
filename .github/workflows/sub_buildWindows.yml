@@ -69,12 +69,12 @@ jobs:
       - name: Make needed directories, files and initializations
         id: Init
         run: |
-          mkdir ${{ env.CCACHE_DIR }}
-          mkdir ${{ env.ccachebindir }}
-          mkdir ${{ env.libpackdir }}
-          mkdir ${{ env.builddir }}
-          mkdir ${{ env.logdir }}
-          mkdir ${{ env.reportdir }}
+          mkdir -p ${{ env.CCACHE_DIR }}
+          mkdir -p ${{ env.ccachebindir }}
+          mkdir -p ${{ env.libpackdir }}
+          mkdir -p ${{ env.builddir }}
+          mkdir -p ${{ env.logdir }}
+          mkdir -p ${{ env.reportdir }}
           echo "reportFile=${{ env.reportfilename }}" >> $GITHUB_OUTPUT
       - name: Get Ccache
         uses: ./.github/workflows/actions/windows/getCcache
@@ -95,9 +95,9 @@ jobs:
             FC-Windows-
       - name: Print Ccache statistics before build, reset stats and print config
         run: |
-          . $env:ccachebindir\ccache -s
-          . $env:ccachebindir\ccache -z
-          . $env:ccachebindir\ccache -p
+          $env:ccachebindir\ccache -s
+          $env:ccachebindir\ccache -z
+          $env:ccachebindir\ccache -p
       - name: Configuring CMake
         run: >
           cmake -B"${{ env.builddir }}" .
@@ -118,15 +118,15 @@ jobs:
           msbuild ALL_BUILD.vcxproj /m /p:Configuration=Release /p:TrackFileAccess=false /p:CLToolPath=${{ env.ccachebindir }}
       - name: Print Ccache statistics after build
         run: |
-          . $env:ccachebindir\ccache -s
+          $env:ccachebindir\ccache -s
       - name: C++ unit tests
         if: false # Disabled because seems to not function on Windows build
         timeout-minutes: 1
         run: |
-          . ${{ env.builddir }}\tests\Release\Tests_run --gtest_output=json:${{ env.reportdir }}gtest_results.json # 2>&1 | tee -filepath ${{ env.logdir }}\unitTests.log
+          ${{ env.builddir }}\tests\Release\Tests_run --gtest_output=json:${{ env.reportdir }}gtest_results.json # 2>&1 | tee -filepath ${{ env.logdir }}\unitTests.log
       - name: FreeCAD CLI tests
         run: |
-          . ${{ env.builddir }}\bin\FreeCADCmd -t 0 # 2>&1 | tee -filepath ${{ env.logdir }}\integrationTests.log
+          ${{ env.builddir }}\bin\FreeCADCmd -t 0 # 2>&1 | tee -filepath ${{ env.logdir }}\integrationTests.log
       - name: Upload logs
         if: always()
         uses: actions/upload-artifact@v4
