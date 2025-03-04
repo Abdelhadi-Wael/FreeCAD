@@ -21,60 +21,48 @@
 # *                                                                         *
 # ***************************************************************************
 
-# This is the master workflow for CI of FreeCAD.
-# It (only) aims at properly organizing the sub-workflows.
+name: Build Windows
 
-name: FreeCAD master CI
-
-on: [workflow_dispatch, push, pull_request]
-
-concurrency:
-  group: FC-CI-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 
 jobs:
+  build:
+    runs-on: windows-latest
 
-  Prepare:
-    uses: ./.github/workflows/sub_prepare.yml
-    with:
-      artifactBasename: Prepare-${{ github.run_id }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
 
-  Pixi:
-    needs: [Prepare]
-    uses: ./.github/workflows/sub_buildPixi.yml
-    with:
-      artifactBasename: Pixi-${{ github.run_id }}
+    - name: Setup ccache
+      uses: actions/cache@v2
+      with:
+        path: C:/FC/cache/
+        key: ${{ runner.os }}-ccache-${{ hashFiles('**/src/**') }}
+        restore-keys: |
+          ${{ runner.os }}-ccache-
 
-  Ubuntu:
-    needs: [Prepare]
-    uses: ./.github/workflows/sub_buildUbuntu.yml
-    with:
-      artifactBasename: Ubuntu-${{ github.run_id }}
+    - name: Configure ccache
+      run: |
+        mkdir -p C:/FC/cache/
+        ccache --set-config=cache_dir=C:/FC/cache/
+        ccache --set-config=max_size=1G
+        ccache --zero-stats
 
-  Windows:
-    needs: [Prepare]
-    uses: ./.github/workflows/sub_buildWindows.yml
-    with:
-      artifactBasename: Windows-${{ github.run_id }}
+    - name: Build
+      run: |
+        mkdir build
+        cd build
+        cmake -G "Visual Studio 16 2019" -A x64 ..
+        cmake --build . --config Release
 
-  Lint:
-    needs: [Prepare]
-    uses: ./.github/workflows/sub_lint.yml
-    with:
-      artifactBasename: Lint-${{ github.run_id }}
-      changedFiles: ${{ needs.Prepare.outputs.changedFiles }}
-      changedCppFiles: ${{ needs.Prepare.outputs.changedCppFiles }}
-      changedPythonFiles: ${{ needs.Prepare.outputs.changedPythonFiles }}
-
-  WrapUp:
-    needs: [
-        Prepare,
-        Pixi,
-        Ubuntu,
-        Windows,
-        Lint
-      ]
-    if: always()
-    uses: ./.github/workflows/sub_wrapup.yml
-    with:
-      previousSteps: ${{ toJSON(needs) }}
+    - name: Post-build cleanup
+      if: always()
+      run: |
+        ccache --show-stats
+        ccache --zero-stats
